@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
+      "env": {
+        "JIRA_URL": "https://vinted.atlassian.net",
+        "JIRA_USERNAME": "__JIRA_USERNAME__",
+        "JIRA_API_TOKEN": "__JIRA_API_TOKEN__",
+        "CONFLUENCE_URL": "https://vinted.atlassian.net/wiki",
+        "CONFLUENCE_USERNAME": "__CONFLUENCE_USERNAME__",
+        "CONFLUENCE_API_TOKEN": "__CONFLUENCE_API_TOKEN__"
+      }
+    }
+  }
+}
