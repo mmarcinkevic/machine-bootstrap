@@ -1,6 +1,5 @@
 {
-    "workbench.colorTheme": "Andromeda",
-    "workbench.iconTheme": "vscode-icons",
+    "workbench.iconTheme": "material-icon-theme",
     "editor.linkedEditing": true,
     "liveServer.settings.donotShowInfoMsg": true,
     "editor.tabSize": 2,
@@ -99,5 +98,10 @@
     "json.schemas": [],
     "git.confirmSync": false,
     "extensions.ignoreRecommendations": true,
-    "git.autofetch": true
+    "git.autofetch": true,
+    "git.enableSmartCommit": true,
+    "githubPullRequests.createOnPublishBranch": "never",
+    "claudeCode.preferredLocation": "panel",
+    "claudeCode.selectedModel": "opus",
+    "claudeCode.useTerminal": true
 }

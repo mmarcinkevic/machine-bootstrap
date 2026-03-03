@@ -1053,11 +1053,11 @@
 	<key>NSWindow Frame ProfilesPanel</key>
 	<string>226 519 735 388 0 0 1512 944 </string>
 	<key>NSWindow Frame SUStatusFrame</key>
-	<string>556 622 400 139 0 0 1512 948 </string>
+	<string>556 623 400 139 0 0 1512 949 </string>
 	<key>NSWindow Frame SUUpdateAlert</key>
-	<string>446 412 620 398 0 0 1512 948 </string>
+	<string>446 413 620 398 0 0 1512 949 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
-	<string>382 270 650 492 0 0 1512 949 </string>
+	<string>258 375 650 492 0 0 1512 949 </string>
 	<key>NSWindow Frame iTerm Window 1</key>
 	<string>407 186 842 654 0 0 1512 948 </string>
 	<key>New Bookmarks</key>
@@ -2234,6 +2234,7 @@
 		<string>3.6.2</string>
 		<string>3.6.4</string>
 		<string>3.6.6</string>
+		<string>3.6.8</string>
 		<string>3.6.1</string>
 	</array>
 	<key>NoSyncBFPRecents</key>
@@ -2259,7 +2260,7 @@
 	<key>NoSyncLastTipTime</key>
 	<real>757452839.80929899</real>
 	<key>NoSyncLaunchExperienceControllerRunCount</key>
-	<integer>148</integer>
+	<integer>154</integer>
 	<key>NoSyncNeverAskAboutSettingAlternateMouseScroll</key>
 	<true/>
 	<key>NoSyncNextAnnoyanceTime</key>
@@ -3117,7 +3118,7 @@
 	<key>NoSyncSavedWindowPositions</key>
 	<dict>
 		<key>0</key>
-		<string>{382, 762}</string>
+		<string>{258, 867}</string>
 		<key>1</key>
 		<string>{407, 840}</string>
 	</dict>
@@ -3183,11 +3184,11 @@
 	<key>SUHasLaunchedBefore</key>
 	<true/>
 	<key>SULastCheckTime</key>
-	<date>2026-02-23T21:08:15Z</date>
+	<date>2026-03-03T18:22:56Z</date>
 	<key>SUSendProfileInfo</key>
 	<false/>
 	<key>SUUpdateGroupIdentifier</key>
-	<integer>4259840745</integer>
+	<integer>33425343</integer>
 	<key>SUUpdateRelaunchingMarker</key>
 	<false/>
 	<key>SoundForEsc</key>
@@ -3201,7 +3202,7 @@
 	<key>findMode_iTerm</key>
 	<integer>0</integer>
 	<key>iTerm Version</key>
-	<string>3.6.6</string>
+	<string>3.6.8</string>
 	<key>kCPKSelectionViewPreferredModeKey</key>
 	<integer>0</integer>
 	<key>kCPKSelectionViewShowHSBTextFieldsKey</key>
