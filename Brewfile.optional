@@ -1,0 +1,9 @@
+brew "colima"
+brew "minikube"
+brew "prometheus"
+brew "grafana"
+brew "slackdump"
+
+if Hardware::CPU.arm?
+  brew "container"
+end

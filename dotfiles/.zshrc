@@ -1,39 +1,35 @@
-export ZSH="$HOME/.oh-my-zsh"
+[[ -o interactive ]] || return 0
+[[ ! -f "$HOME/.zprofile" ]] || source "$HOME/.zprofile"
 
-# Enable plugins (add more if needed)
-plugins=(git)
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+setopt APPEND_HISTORY HIST_IGNORE_SPACE HIST_REDUCE_BLANKS
 
-# Source Oh My Zsh
-source $ZSH/oh-my-zsh.sh
+autoload -Uz compinit
+compinit
 
-# Load Powerlevel10k configuration if it exists
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# Homebrew
-eval "$(brew shellenv)"
-
-# Paths
-export PATH="/usr/local/bin:$PATH"
-export PATH="$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init - zsh)"
-
-# GHCup (Haskell toolchain)
-[ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env"
-
-# kubectl completions
-if command -v kubectl &>/dev/null; then
-  source <(kubectl completion zsh)
+if command -v rbenv >/dev/null 2>&1; then
+  eval "$(rbenv init - --no-rehash zsh)"
+fi
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+  alias cd='z'
+fi
+if command -v eza >/dev/null 2>&1; then
+  alias ls='eza --icons --git'
+  alias ll='eza --icons --git -lah'
+fi
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat'
+fi
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
 fi
 
-# Final PATH adjustments
-export PATH="$HOME/.rbenv/shims:$HOME/.rbenv/bin:/usr/local/bin:$PATH"
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-
-export PATH="$HOME/.local/bin:$PATH"
-
-# Secrets -- set these in ~/.secrets or via 1Password CLI
-# export ANTHROPIC_API_KEY="..."
-[ -f "$HOME/.secrets" ] && source "$HOME/.secrets"
+if [[ -f "$HOME/.secrets" ]]; then
+  source "$HOME/.secrets"
+fi
+if [[ -f "$HOME/.zshrc.local" ]]; then
+  source "$HOME/.zshrc.local"
+fi

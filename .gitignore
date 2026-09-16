@@ -3,6 +3,11 @@
 *.secret
 *.key
 *.pem
+.env
+.env.*
+.gitconfig.local
+.zprofile.local
+.zshrc.local
 
 # OS files
 .DS_Store
@@ -10,6 +15,7 @@ Thumbs.db
 
 # Backup files created by setup.sh
 *.bak
+*.backup.*/
 
 # Brew lock file
 Brewfile.lock.json

@@ -1,0 +1,32 @@
+{
+  "servers": {
+    "mcp-atlassian": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "JIRA_URL",
+        "-e", "JIRA_USERNAME",
+        "-e", "JIRA_API_TOKEN",
+        "-e", "CONFLUENCE_URL",
+        "-e", "CONFLUENCE_USERNAME",
+        "-e", "CONFLUENCE_API_TOKEN",
+        "ghcr.io/sooperset/mcp-atlassian:latest"
+      ],
+      "env": {
+        "JIRA_URL": "${input:jira-url}",
+        "JIRA_USERNAME": "${input:atlassian-username}",
+        "JIRA_API_TOKEN": "${input:atlassian-token}",
+        "CONFLUENCE_URL": "${input:confluence-url}",
+        "CONFLUENCE_USERNAME": "${input:atlassian-username}",
+        "CONFLUENCE_API_TOKEN": "${input:atlassian-token}"
+      }
+    }
+  },
+  "inputs": [
+    { "id": "jira-url", "type": "promptString", "description": "Jira site URL" },
+    { "id": "confluence-url", "type": "promptString", "description": "Confluence site URL (including /wiki for Cloud)" },
+    { "id": "atlassian-username", "type": "promptString", "description": "Atlassian account email", "password": true },
+    { "id": "atlassian-token", "type": "promptString", "description": "Atlassian API token", "password": true }
+  ]
+}

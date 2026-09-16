@@ -1,147 +1,198 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DRY_RUN=false
+CONFIG_ONLY=false
+REPLACE_CONFIG=false
+WITH_OPTIONAL=false
+WITH_MCP=false
+MACOS_DEFAULTS=false
+PRESERVED=0
 
-info()  { printf "\033[1;34m[INFO]\033[0m  %s\n" "$1"; }
-ok()    { printf "\033[1;32m[OK]\033[0m    %s\n" "$1"; }
-warn()  { printf "\033[1;33m[WARN]\033[0m  %s\n" "$1"; }
+info() { printf '[INFO] %s\n' "$*"; }
+warn() { printf '[WARN] %s\n' "$*" >&2; }
+die() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 
-# ── 1. Xcode Command Line Tools ──────────────────────────────────────────────
-if ! xcode-select -p &>/dev/null; then
-  info "Installing Xcode Command Line Tools..."
-  xcode-select --install
-  read -rp "Press Enter after Xcode CLT installation finishes..."
-else
-  ok "Xcode Command Line Tools already installed"
-fi
-
-# ── 2. Homebrew ───────────────────────────────────────────────────────────────
-if ! command -v brew &>/dev/null; then
-  info "Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  eval "$(brew shellenv)"
-else
-  ok "Homebrew already installed"
-fi
-
-# ── 3. Brew Bundle ────────────────────────────────────────────────────────────
-info "Installing formulae, casks, and extensions from Brewfile..."
-brew bundle --file="$SCRIPT_DIR/Brewfile" --no-lock
-
-# ── 4. Oh My Zsh + Powerlevel10k ─────────────────────────────────────────────
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-  info "Installing Oh My Zsh..."
-  RUNZSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-else
-  ok "Oh My Zsh already installed"
-fi
-
-P10K_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
-if [ ! -d "$P10K_DIR" ]; then
-  info "Installing Powerlevel10k theme..."
-  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
-else
-  ok "Powerlevel10k already installed"
-fi
-
-# ── 5. NVM + Node ────────────────────────────────────────────────────────────
-export NVM_DIR="$HOME/.nvm"
-if [ ! -d "$NVM_DIR" ]; then
-  info "Installing NVM..."
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-fi
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-info "Installing latest LTS Node via NVM..."
-nvm install --lts
-nvm use --lts
-
-# ── 6. npm global packages ───────────────────────────────────────────────────
-info "Installing npm global packages..."
-xargs npm install -g < "$SCRIPT_DIR/node/global-packages.txt"
-
-# ── 7. Python global packages ────────────────────────────────────────────────
-info "Installing pip global packages..."
-pip3 install -r "$SCRIPT_DIR/python/global-packages.txt"
-
-# ── 8. Dotfiles ──────────────────────────────────────────────────────────────
-link_dotfile() {
-  local src="$1" dest="$2"
-  if [ -f "$dest" ] && [ ! -L "$dest" ]; then
-    warn "Backing up existing $dest to ${dest}.bak"
-    mv "$dest" "${dest}.bak"
-  fi
-  ln -sf "$src" "$dest"
-  ok "Linked $src -> $dest"
+usage() {
+  printf '%s\n' \
+    'Usage: bash setup.sh [options]' \
+    '  --dry-run          Preview actions without writing or installing anything' \
+    '  --config-only      Install configuration files only' \
+    '  --replace-config   Back up and replace conflicting configuration files' \
+    '  --with-optional    Also install Brewfile.optional (no services are started)' \
+    '  --with-mcp         Install the VS Code Atlassian MCP template' \
+    '  --macos-defaults   Apply the reviewed macOS preferences' \
+    '  --help             Show this help'
 }
 
-link_dotfile "$SCRIPT_DIR/dotfiles/.zshrc"     "$HOME/.zshrc"
-link_dotfile "$SCRIPT_DIR/dotfiles/.zprofile"  "$HOME/.zprofile"
-link_dotfile "$SCRIPT_DIR/dotfiles/.gitconfig" "$HOME/.gitconfig"
+run() {
+  if "$DRY_RUN"; then
+    printf '[PLAN]'
+    printf ' %q' "$@"
+    printf '\n'
+  else
+    "$@"
+  fi
+}
 
-# ── 9. iTerm2 preferences ────────────────────────────────────────────────────
-info "Importing iTerm2 preferences..."
-ITERM_PLIST="$HOME/Library/Preferences/com.googlecode.iterm2.plist"
-if [ -f "$ITERM_PLIST" ]; then
-  warn "Backing up existing iTerm2 preferences to ${ITERM_PLIST}.bak"
-  cp "$ITERM_PLIST" "${ITERM_PLIST}.bak"
+install_config() {
+  local source="$1" destination="$2" backup
+  [[ -f "$source" ]] || die "Missing configuration source: $source"
+  [[ ! -d "$destination" ]] || die "Refusing to replace a directory: $destination"
+  if [[ -f "$destination" ]] && cmp -s "$source" "$destination"; then
+    info "Unchanged: $destination"
+    return
+  fi
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    if ! "$REPLACE_CONFIG"; then
+      warn "Preserved existing configuration: $destination (use --replace-config after review)"
+      PRESERVED=$((PRESERVED + 1))
+      return
+    fi
+    if "$DRY_RUN"; then
+      info "Would back up and replace: $destination"
+      return
+    fi
+    backup="$(mktemp -d "${destination}.backup.XXXXXXXX")"
+    mv "$destination" "$backup/original"
+    info "Backup: $backup/original"
+  fi
+  run mkdir -p "$(dirname "$destination")"
+  run cp "$source" "$destination"
+}
+
+find_brew() {
+  local candidate
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return
+  fi
+  for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew "$HOME/homebrew/bin/brew"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  return 1
+}
+
+find_code() {
+  local candidate
+  if command -v code >/dev/null 2>&1; then
+    command -v code
+    return
+  fi
+  for candidate in \
+    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' \
+    "$HOME/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  return 1
+}
+
+install_packages() {
+  local brew_bin brew_environment code_bin package installed_extensions extension
+  if ! "$DRY_RUN"; then
+    xcode-select -p >/dev/null 2>&1 || die 'Install Xcode Command Line Tools with xcode-select --install, wait for completion, then rerun.'
+  fi
+  if brew_bin="$(find_brew)"; then
+    if ! "$DRY_RUN"; then
+      brew_environment="$("$brew_bin" shellenv)"
+      eval "$brew_environment"
+    fi
+  elif "$DRY_RUN"; then
+    brew_bin=brew
+    info 'Homebrew is a prerequisite; see README.md for installation.'
+  else
+    die 'Homebrew is missing. Install it from https://brew.sh, then rerun. Do not run setup with sudo.'
+  fi
+  run "$brew_bin" bundle install --file="$SCRIPT_DIR/Brewfile" --no-upgrade
+  if "$WITH_OPTIONAL"; then
+    run "$brew_bin" bundle install --file="$SCRIPT_DIR/Brewfile.optional" --no-upgrade
+  fi
+  while IFS= read -r package || [[ -n "$package" ]]; do
+    [[ -n "$package" && "$package" != \#* ]] || continue
+    if ! "$DRY_RUN" && npm list --global --prefix "$HOME/.local/share/npm" "$package" --depth=0 >/dev/null 2>&1; then
+      info "npm package already installed: $package"
+    else
+      run npm install --global --prefix "$HOME/.local/share/npm" "$package"
+    fi
+  done < "$SCRIPT_DIR/node/global-packages.txt"
+  if "$DRY_RUN"; then
+    info 'Would install missing VS Code extensions from vscode/extensions.txt using the app-bundled CLI.'
+    return
+  fi
+  code_bin="$(find_code)" || die 'VS Code CLI not found after installation.'
+  installed_extensions="$("$code_bin" --list-extensions)"
+  while IFS= read -r extension || [[ -n "$extension" ]]; do
+    [[ -n "$extension" && "$extension" != \#* ]] || continue
+    if printf '%s\n' "$installed_extensions" | grep -Fxiq -- "$extension"; then
+      info "Extension already installed: $extension"
+    else
+      "$code_bin" --install-extension "$extension"
+    fi
+  done < "$SCRIPT_DIR/vscode/extensions.txt"
+}
+
+install_configs() {
+  local code_user="$HOME/Library/Application Support/Code/User"
+  local config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  install_config "$SCRIPT_DIR/dotfiles/.zprofile" "$HOME/.zprofile"
+  install_config "$SCRIPT_DIR/dotfiles/.zshrc" "$HOME/.zshrc"
+  install_config "$SCRIPT_DIR/dotfiles/.gitconfig" "$HOME/.gitconfig"
+  install_config "$SCRIPT_DIR/dotfiles/starship.toml" "$config_home/starship.toml"
+  install_config "$SCRIPT_DIR/ghostty/config.ghostty" "$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+  install_config "$SCRIPT_DIR/vscode/settings.json" "$code_user/settings.json"
+  install_config "$SCRIPT_DIR/vscode/keybindings.json" "$code_user/keybindings.json"
+  if "$WITH_MCP"; then
+    install_config "$SCRIPT_DIR/vscode/mcp.json" "$code_user/mcp.json"
+  fi
+}
+
+main() {
+  local option source
+  for option in "$@"; do
+    case "$option" in
+      --dry-run) DRY_RUN=true ;;
+      --config-only) CONFIG_ONLY=true ;;
+      --replace-config) REPLACE_CONFIG=true ;;
+      --with-optional) WITH_OPTIONAL=true ;;
+      --with-mcp) WITH_MCP=true ;;
+      --macos-defaults) MACOS_DEFAULTS=true ;;
+      --help|-h) usage; return ;;
+      *) usage >&2; die "Unknown option: $option" ;;
+    esac
+  done
+  [[ "$(uname -s)" == Darwin ]] || die 'This bootstrap supports macOS only.'
+  [[ "$EUID" -ne 0 ]] || die 'Run as your normal user, not with sudo.'
+  [[ -n "${HOME:-}" && "$HOME" == /* && "$HOME" != / ]] || die 'HOME must be an absolute user home directory.'
+  [[ -z "${XDG_CONFIG_HOME:-}" || "$XDG_CONFIG_HOME" == /* ]] || die 'XDG_CONFIG_HOME must be absolute.'
+  for source in Brewfile Brewfile.optional node/global-packages.txt dotfiles/.zprofile dotfiles/.zshrc \
+    dotfiles/.gitconfig dotfiles/starship.toml ghostty/config.ghostty vscode/settings.json \
+    vscode/keybindings.json vscode/extensions.txt vscode/mcp.json macos/defaults.sh; do
+    [[ -f "$SCRIPT_DIR/$source" ]] || die "Missing repository file: $source"
+  done
+  if ! "$CONFIG_ONLY"; then
+    install_packages
+  fi
+  install_configs
+  if "$MACOS_DEFAULTS"; then
+    run bash "$SCRIPT_DIR/macos/defaults.sh"
+  fi
+  if "$DRY_RUN"; then
+    info 'Preview complete. Nothing was installed or changed.'
+  else
+    info "Setup finished; $PRESERVED conflicting configuration file(s) preserved."
+    info 'See README.md for login, Git identity/signing, Docker startup, and optional MCP steps.'
+    info 'Setup did not request service or Docker startup. Open a new terminal to load shell changes.'
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  trap 'printf "[ERROR] Setup stopped at line %s. Resolve the error and rerun.\n" "$LINENO" >&2' ERR
+  main "$@"
 fi
-cp "$SCRIPT_DIR/iterm2/com.googlecode.iterm2.plist" "$ITERM_PLIST"
-defaults read com.googlecode.iterm2 &>/dev/null
-ok "iTerm2 preferences imported"
-
-# ── 10. Cursor settings ──────────────────────────────────────────────────────
-CURSOR_USER_DIR="$HOME/Library/Application Support/Cursor/User"
-CURSOR_HOME="$HOME/.cursor"
-
-mkdir -p "$CURSOR_USER_DIR"
-mkdir -p "$CURSOR_HOME"
-
-info "Copying Cursor settings..."
-cp "$SCRIPT_DIR/cursor/settings.json"    "$CURSOR_USER_DIR/settings.json"
-cp "$SCRIPT_DIR/cursor/keybindings.json" "$CURSOR_USER_DIR/keybindings.json"
-ok "Cursor settings.json and keybindings.json copied"
-
-info "Copying Cursor MCP config (remember to fill in API tokens)..."
-cp "$SCRIPT_DIR/cursor/mcp.json" "$CURSOR_HOME/mcp.json"
-warn "Edit ~/.cursor/mcp.json and replace __PLACEHOLDER__ tokens with real values"
-
-# ── 11. Cursor extensions ────────────────────────────────────────────────────
-if command -v cursor &>/dev/null; then
-  info "Installing Cursor extensions..."
-  while IFS= read -r ext; do
-    [ -z "$ext" ] && continue
-    cursor --install-extension "$ext" || warn "Failed to install extension: $ext"
-  done < "$SCRIPT_DIR/cursor/extensions.txt"
-  ok "Cursor extensions installed"
-else
-  warn "Cursor CLI not found -- install Cursor and run: cat cursor/extensions.txt | xargs -L1 cursor --install-extension"
-fi
-
-# ── 12. macOS defaults (optional) ────────────────────────────────────────────
-if [ -f "$SCRIPT_DIR/macos/defaults.sh" ]; then
-  info "Applying macOS defaults..."
-  bash "$SCRIPT_DIR/macos/defaults.sh"
-fi
-
-# ── 13. Colima (Docker runtime) ──────────────────────────────────────────────
-if command -v colima &>/dev/null; then
-  info "Starting Colima (Docker runtime)..."
-  colima start --cpu 4 --memory 8 --disk 60 2>/dev/null || ok "Colima already running"
-else
-  warn "Colima not found -- Docker runtime not started"
-fi
-
-# ── Done ──────────────────────────────────────────────────────────────────────
-echo ""
-ok "Bootstrap complete!"
-echo ""
-warn "Manual steps remaining:"
-echo "  1. Generate a new SSH key:  ssh-keygen -t ed25519 -C \"your-email@example.com\""
-echo "  2. Add SSH key to GitHub:   gh ssh-key add ~/.ssh/id_ed25519.pub"
-echo "  3. Add signing key to .gitconfig"
-echo "  4. Fill secrets in ~/.secrets (API keys, tokens)"
-echo "  5. Fill tokens in ~/.cursor/mcp.json"
-echo "  6. Restart iTerm2 to load imported preferences"
-echo "  7. Run 'p10k configure' if Powerlevel10k prompt needs adjustment"

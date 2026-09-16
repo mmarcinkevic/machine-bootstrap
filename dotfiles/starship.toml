@@ -1,0 +1,112 @@
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$git_state\
+$kubernetes\
+$azure\
+$aws\
+$gcloud\
+$docker_context\
+$terraform\
+$python\
+$nodejs\
+$rust\
+$golang\
+$cmd_duration
+$character"""
+
+[character]
+success_symbol = "[>](bold green)"
+error_symbol = "[>](bold red)"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "bold cyan"
+format = "[$path]($style)[$read_only]($read_only_style) "
+
+[git_branch]
+symbol = ""
+style = "bold purple"
+format = "[$symbol$branch(:$remote_branch)]($style) "
+
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = "bold yellow"
+conflicted = "="
+ahead = "up${count}"
+behind = "down${count}"
+diverged = "up${ahead_count}down${behind_count}"
+untracked = "?"
+stashed = '\$'
+modified = "!"
+staged = "+"
+renamed = ">"
+deleted = "x"
+
+[git_state]
+format = '[\($state( $progress_current of $progress_total)\)]($style) '
+style = "bright-black"
+
+[kubernetes]
+disabled = true
+
+[azure]
+disabled = true
+
+[aws]
+symbol = "aws "
+format = '[$symbol($profile)(\($region\))]($style) '
+style = "bold yellow"
+
+[gcloud]
+disabled = false
+symbol = "gcp "
+format = '[$symbol$account(@$domain)(\($region\))]($style) '
+style = "bold blue"
+
+[docker_context]
+disabled = false
+symbol = "docker "
+format = '[$symbol$context]($style) '
+style = "bold blue"
+only_with_files = true
+detect_files = ['docker-compose.yml', 'Dockerfile']
+
+[terraform]
+disabled = false
+symbol = "tf "
+format = '[$symbol$workspace]($style) '
+style = "bold purple"
+detect_extensions = ['tf', 'tfvars', 'tfplan', 'tfstate']
+
+[python]
+symbol = "py "
+format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\))]($style) '
+style = "yellow"
+
+[nodejs]
+symbol = ""
+format = '[$symbol($version )]($style)'
+style = "green"
+
+[rust]
+symbol = "rs "
+format = '[$symbol($version )]($style)'
+style = "red"
+
+[golang]
+symbol = "go "
+format = '[$symbol($version )]($style)'
+style = "cyan"
+
+[cmd_duration]
+min_time = 2000
+format = '[ $duration]($style) '
+style = "bold yellow"
+
+[time]
+disabled = true

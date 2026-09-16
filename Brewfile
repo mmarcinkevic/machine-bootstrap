@@ -1,70 +1,53 @@
-# Taps
-tap "anomalyco/tap"
-tap "azure/kubelogin"
-tap "hashicorp/tap"
-tap "ngrok/ngrok"
-
-# Core CLI tools
+# Shell and everyday development
+brew "git"
 brew "gh"
 brew "git-lfs"
+brew "gnupg"
+brew "bat"
+brew "eza"
+brew "ripgrep"
+brew "starship"
+brew "zoxide"
 brew "just"
-brew "lazydocker"
 brew "hadolint"
-brew "bash-completion"
-brew "slackdump"
+brew "shellcheck"
 brew "act"
 
 # Languages & runtimes
 brew "node"
+brew "python"
+brew "uv"
 brew "go"
 brew "rust"
 brew "rbenv"
-brew "uv"
+brew "ruby-build"
 
 # Cloud & infrastructure
+brew "ansible"
+brew "awscli"
+brew "aws-sso-cli"
 brew "azure-cli"
-brew "azure/kubelogin/kubelogin"
-brew "minikube"
-brew "colima"
+brew "kubernetes-cli"
+brew "kubectx"
+brew "stern"
 brew "terragrunt"
-brew "prometheus", restart_service: :changed
-brew "grafana", restart_service: :changed
+brew "lazydocker"
 
 # Build tools
 brew "autoconf"
 brew "cmake"
+brew "meson"
 
-# Other
-brew "anomalyco/tap/opencode"
-brew "container", restart_service: :changed
-
-# Casks
+# Development applications
+cask "1password"
 cask "1password-cli"
+cask "ghostty"
+cask "visual-studio-code"
+cask "docker-desktop"
+cask "postman"
+cask "claude"
+cask "claude-code"
+cask "codex"
 cask "devtunnel"
-cask "iterm2"
-cask "ngrok/ngrok/ngrok"
-
-# Cursor extensions
-vscode "1password.op-vscode"
-vscode "anthropic.claude-code"
-vscode "bierner.markdown-mermaid"
-vscode "christian-kohler.path-intellisense"
-vscode "eamodio.gitlens"
-vscode "esbenp.prettier-vscode"
-vscode "formulahendry.code-runner"
-vscode "github.vscode-github-actions"
-vscode "github.vscode-pull-request-github"
-vscode "golang.go"
-vscode "mikestead.dotenv"
-vscode "ms-azuretools.vscode-azureresourcegroups"
-vscode "ms-azuretools.vscode-containers"
-vscode "ms-kubernetes-tools.vscode-kubernetes-tools"
-vscode "ms-python.debugpy"
-vscode "ms-python.python"
-vscode "ms-python.vscode-python-envs"
-vscode "ms-vscode.live-server"
-vscode "pkief.material-icon-theme"
-vscode "redhat.vscode-yaml"
-vscode "shopify.ruby-lsp"
-vscode "tomoki1207.pdf"
-vscode "usernamehw.errorlens"
+cask "ngrok"
+cask "font-hack-nerd-font"

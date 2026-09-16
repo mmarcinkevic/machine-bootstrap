@@ -3,14 +3,11 @@
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
-[user]
-	email = marcinkevic.martin@gmail.com
-	name = mmarcinkevic
-	# signingkey is machine-specific -- set after generating SSH key
-	# signingkey = ssh-rsa ...
+[pull]
+	rebase = false
 [gpg]
 	format = ssh
 [gpg "ssh"]
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-[commit]
-	gpgsign = true
+[include]
+	path = ~/.gitconfig.local
