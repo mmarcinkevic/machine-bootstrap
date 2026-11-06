@@ -2,14 +2,16 @@
 
 Repeatable macOS development setup for Ghostty, Visual Studio Code, Zsh with
 Starship, Homebrew runtimes, and Docker Desktop. Reviewed against the current
-Apple Silicon Mac on 2026-09-16. This recreates a curated development environment,
+Apple Silicon Mac on 2026-11-06. This recreates a curated development environment,
 not a disk image or an exact version-locked snapshot.
 
 ## Prerequisites
 
 1. Use a macOS release supported by current Homebrew and the listed applications.
-   The core setup supports Apple Silicon and Intel; Apple's optional `container`
-   tool is Apple Silicon only. This revision was tested on Apple Silicon macOS 26.
+   Apple Silicon is the tested target (macOS 26). Intel is unverified/best effort:
+   [Homebrew classifies Intel macOS as Tier 3](https://docs.brew.sh/Support-Tiers)
+   and no longer builds new Intel bottles. Apple's optional `container` tool is
+   installed only on Apple Silicon running macOS 26 or newer.
 2. Install Xcode Command Line Tools, and wait for the installer to finish:
 
    ```bash
@@ -25,8 +27,8 @@ not a disk image or an exact version-locked snapshot.
    The optional MCP server also needs access to its container registry and your
    Atlassian sites. Corporate networks may require approved certificates or VPN.
 
-Prefer Homebrew's supported prefix: `/opt/homebrew` on Apple Silicon or
-`/usr/local` on Intel. An existing `brew` on `PATH` is respected; the scripts also
+Prefer Homebrew's default prefix: `/opt/homebrew` on Apple Silicon (`/usr/local`
+on Intel). An existing `brew` on `PATH` is respected; the scripts also
 recognize those prefixes and `$HOME/homebrew` for the current Mac. The latter is
 a compatibility fallback, not a recommended layout for a new machine. For any
 other custom prefix, put `brew` on `PATH` first.
@@ -72,7 +74,7 @@ bash setup.sh --config-only --replace-config --with-mcp
 
 | Source | Purpose |
 | --- | --- |
-| [Brewfile](Brewfile) | Explicit development CLIs, maintained runtimes, Ghostty, VS Code, Docker Desktop, 1Password, Postman, Claude, Claude Code, Codex, devtunnel, ngrok, and Hack Nerd Font. |
+| [Brewfile](Brewfile) | Development CLIs including OpenTofu, OpenCode, and kubelogin; Node 24 LTS and other runtimes; Ghostty, VS Code, Docker Desktop, 1Password, Postman, ChatGPT, Raycast, Claude, Claude Code, Codex CLI, devtunnel, ngrok, and Hack Nerd Font. |
 | [Brewfile.optional](Brewfile.optional) | Colima, minikube, Prometheus, Grafana, slackdump, and Apple Container where supported. |
 | [dotfiles/.zprofile](dotfiles/.zprofile) | Homebrew discovery and portable user/application paths. |
 | [dotfiles/.zshrc](dotfiles/.zshrc) | Completions, history settings, rbenv, Starship, zoxide, and guarded eza/bat aliases. |
@@ -81,7 +83,7 @@ bash setup.sh --config-only --replace-config --with-mcp
 | [ghostty/config.ghostty](ghostty/config.ghostty) | Intentionally default settings, matching the empty live configuration. |
 | [vscode/settings.json](vscode/settings.json) | Reviewed portable editor preferences, including Andromeda Italic and Material icons. |
 | [vscode/keybindings.json](vscode/keybindings.json) | Empty custom overrides, matching the live file; Sublime bindings come from an extension. |
-| [vscode/extensions.txt](vscode/extensions.txt) | The 45 installed extension IDs, managed only here. |
+| [vscode/extensions.txt](vscode/extensions.txt) | The 46 installed extension IDs, including OpenTofu and Codex Audio, managed only here. |
 | [vscode/mcp.json](vscode/mcp.json) | Optional Docker-based Atlassian server with secure input prompts. |
 | [node/global-packages.txt](node/global-packages.txt) | Forge CLI; blank lines and full-line comments are supported. |
 | [macos/defaults.sh](macos/defaults.sh) | Optional matching Finder path/status bars and Dock preferences. |
@@ -122,6 +124,10 @@ conflict with an existing app, font, or executable, inspect it and resolve it
 manually; setup never uses `--force`. On the current Mac, check for duplicate native
 and Homebrew Claude/Codex installations with `type -a claude codex` before choosing
 one installation owner. Old tools and runtime directories are not removed.
+The audited Mac uses Claude Code's native installer; the cask is the chosen owner
+for a fresh setup. Review that native installation before running package setup
+on an existing Mac. The `chatgpt` cask installs the desktop app; `codex` installs
+the standalone CLI.
 
 ## Manual Completion
 
@@ -133,16 +139,22 @@ account settings if necessary. Local additions belong in `~/.zprofile.local` and
 an existing shell file, merge the new initialization and paths manually. Check
 `type -a node npm code docker` to detect old PATH entries or runtime managers.
 
-Homebrew owns Node, Python, Go, and Rust. npm CLIs use the user-owned prefix
-`~/.local/share/npm`; its `bin` directory is added to the shell path. No `sudo npm`,
+Homebrew owns Node 24 LTS (`node@24`), Python, Go, and Rust. Setup and the managed
+shell explicitly add Node 24's keg-only `bin` directory to `PATH`, ahead of other
+Node installations. Keep Node 24 on a maintained patch release compatible with
+[Forge's requirements](https://developer.atlassian.com/platform/forge/getting-started/);
+`--no-upgrade` does not refresh an older installed patch. npm CLIs use the user-owned
+prefix `~/.local/share/npm`; its `bin` directory is added to the shell path. No `sudo npm`,
 global Python pip installation, NVM initialization, or automatic Corepack setup
 is performed. Use `uv` project environments for Python and `uv tool install` for
 isolated Python CLIs; no global Python applications were found in the audit.
 
 rbenv and ruby-build are installed, but no Ruby version is selected globally.
 Install the version declared by each project's `.ruby-version`, using a maintained
-Ruby release where compatible. The old local Ruby 3.1 and NVM Node installations
-are not reproduced. Likewise, project SDKs, Rust targets, PHP, .NET SDKs, GCP CLI,
+Ruby release where compatible. The existing local Ruby 3.1 and active NVM Node
+installations are not reproduced or removed. If retaining NVM on an existing Mac,
+keep its initialization in your preserved shell configuration or a local override.
+Likewise, project SDKs, Rust targets, PHP, .NET SDKs, GCP CLI,
 or package-manager versions are not inferred merely from installed extensions.
 
 ### Identity And Authentication
@@ -206,7 +218,7 @@ No previous preference snapshot is saved. Log out/in when convenient; setup does
 not kill Finder, Dock, or other apps. Keyboard and screenshot defaults are untouched.
 
 Use employer self-service/MDM for VPN, security agents, SSO, Microsoft apps, and
-corporate certificates. Personal/everyday apps are outside this manifest. Install
+corporate certificates. Other personal/everyday apps are outside this manifest. Install
 Orca from its vendor if needed; its sessions, agent skills/instructions, local
 worktrees, and custom integrations are not copied. Restore project repositories
 and application data separately from an approved backup.
@@ -247,7 +259,9 @@ bash setup.sh --dry-run --with-optional --with-mcp --macos-defaults
 Validation checks syntax, JSON/TOML and MCP references, manifest hygiene, selected
 sensitive-data patterns, and isolated temporary-home tests. The latter cover
 repeat runs, preserved files, distinct backups, symlinks, paths with spaces,
-shell startup, optional operations, and simulated package/extension failures.
+login/non-login shell startup, Node 24 selection, optional operations, and
+simulated package/extension failures. When Homebrew is available, validation also
+checks Container selection across macOS versions and CPU architectures.
 Homebrew parsing, Ghostty validation, Starship parsing, and ShellCheck run when
 available; missing validation tools are reported. No real installers, defaults
 writes, or service starts are used by these tests.

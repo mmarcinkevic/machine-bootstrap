@@ -1,7 +1,6 @@
 1password.op-vscode
 anteprimorac.html-end-tag-labels
 anthropic.claude-code
-bierner.markdown-mermaid
 devsense.composer-php-vscode
 devsense.intelli-php-vscode
 devsense.phptools-vscode
@@ -31,6 +30,8 @@ ms-vscode-remote.remote-ssh-edit
 ms-vscode.remote-explorer
 ms-vscode.sublime-keybindings
 openai.chatgpt
+openai.codex-audio
+opentofu.vscode-opentofu
 pkief.material-icon-theme
 redhat.vscode-yaml
 ritwickdey.liveserver

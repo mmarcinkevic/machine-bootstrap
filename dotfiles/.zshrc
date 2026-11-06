@@ -1,5 +1,7 @@
 [[ -o interactive ]] || return 0
-[[ ! -f "$HOME/.zprofile" ]] || source "$HOME/.zprofile"
+if [[ ! -o login && -f "$HOME/.zprofile" ]]; then
+  source "$HOME/.zprofile"
+fi
 
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=10000

@@ -80,6 +80,21 @@ fi
 if command -v brew >/dev/null 2>&1; then
   HOMEBREW_NO_AUTO_UPDATE=1 brew bundle list --all --file=Brewfile >/dev/null
   HOMEBREW_NO_AUTO_UPDATE=1 brew bundle list --all --file=Brewfile.optional >/dev/null
+  # Avoid persisting developer mode when invoking Homebrew's Ruby runner.
+  HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_DEVELOPER=1 brew ruby - "$ROOT/Brewfile.optional" <<'RUBY'
+require "bundle/dsl"
+require "macos_version"
+
+[["15", true, false], ["26", true, true], ["27", true, true], ["26", false, false]].each do |version, arm, expected|
+  MacOS.define_singleton_method(:version) { MacOSVersion.new(version) }
+  Hardware::CPU.define_singleton_method(:arm?) { arm }
+  entries = Homebrew::Bundle::Dsl.new(Pathname.new(ARGV.fetch(0))).entries
+  unless entries.any? { |entry| entry.name == "container" } == expected
+    abort "Incorrect Container selection for macOS #{version}, arm=#{arm}"
+  end
+end
+puts "Optional Container architecture and macOS compatibility checks passed."
+RUBY
 else
   printf '[SKIP] Homebrew manifest parser is not installed.\n'
 fi

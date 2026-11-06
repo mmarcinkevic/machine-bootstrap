@@ -4,6 +4,6 @@ brew "prometheus"
 brew "grafana"
 brew "slackdump"
 
-if Hardware::CPU.arm?
+if Hardware::CPU.arm? && MacOS.version >= :tahoe
   brew "container"
 end

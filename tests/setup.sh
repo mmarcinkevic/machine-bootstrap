@@ -69,6 +69,10 @@ cat > "$TEMP_DIR/bin/mock" <<'MOCK'
 set -eu
 command_name="${0##*/}"
 printf '%s %s\n' "$command_name" "$*" >> "$MOCK_LOG"
+if [[ "$command_name" == npm && "${0%/*}" != "$MOCK_BREW_PREFIX/opt/node@24/bin" ]]; then
+  printf 'npm did not use Homebrew Node 24.\n' >&2
+  exit 98
+fi
 if [[ "${MOCK_FAIL:-}" == "$command_name:${1:-}" ]]; then
   printf 'Simulated failure: %s\n' "$MOCK_FAIL" >&2
   exit 17
@@ -76,7 +80,7 @@ fi
 case "$command_name:${1:-}" in
   uname:-s) printf '%s\n' "${MOCK_OS:-Darwin}" ;;
   xcode-select:-p) printf '/mock/CommandLineTools\n' ;;
-  brew:shellenv) printf 'export HOMEBREW_PREFIX=%q\n' "$MOCK_STATE/brew" ;;
+  brew:shellenv) printf 'export HOMEBREW_PREFIX=%q\n' "$MOCK_BREW_PREFIX" ;;
   brew:bundle) [[ "$*" == *--no-upgrade* ]] ;;
   npm:list) [[ -f "$MOCK_STATE/npm-installed" ]] ;;
   npm:install) touch "$MOCK_STATE/npm-installed" ;;
@@ -92,13 +96,19 @@ chmod +x "$TEMP_DIR/bin/mock"
 for command_name in brew code npm xcode-select defaults uname; do
   ln -s mock "$TEMP_DIR/bin/$command_name"
 done
+MOCK_BREW_PREFIX="$TEMP_DIR/brew prefix"
+mkdir -p "$MOCK_BREW_PREFIX/opt/node@24/bin"
+for command_name in node npm; do
+  ln -s "$TEMP_DIR/bin/mock" "$MOCK_BREW_PREFIX/opt/node@24/bin/$command_name"
+done
 
 MOCK_HOME="$TEMP_DIR/fresh home"
 MOCK_STATE="$TEMP_DIR/state"
 MOCK_LOG="$TEMP_DIR/commands.log"
 mock_setup() {
   env -i HOME="$MOCK_HOME" PATH="$TEMP_DIR/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-    MOCK_LOG="$MOCK_LOG" MOCK_STATE="$MOCK_STATE" MOCK_FAIL="${MOCK_FAIL:-}" \
+    MOCK_LOG="$MOCK_LOG" MOCK_STATE="$MOCK_STATE" MOCK_BREW_PREFIX="$MOCK_BREW_PREFIX" \
+    MOCK_FAIL="${MOCK_FAIL:-}" \
     MOCK_OS="${MOCK_OS:-Darwin}" XDG_CONFIG_HOME="${MOCK_XDG:-}" \
     /bin/bash "$ROOT/setup.sh" "$@"
 }
@@ -148,6 +158,13 @@ for failure in brew:shellenv brew:bundle npm:install code:--list-extensions code
     die 'Failed setup reported success.'
   fi
 done
+MOCK_HOME="$TEMP_DIR/missing-node-home"
+mv "$MOCK_BREW_PREFIX/opt/node@24/bin/node" "$MOCK_BREW_PREFIX/opt/node@24/bin/node.disabled"
+if mock_setup > "$TEMP_DIR/missing-node.log" 2>&1; then
+  die 'Missing Homebrew Node 24 should fail instead of using another runtime.'
+fi
+[[ ! -f "$MOCK_HOME/.zshrc" ]]
+mv "$MOCK_BREW_PREFIX/opt/node@24/bin/node.disabled" "$MOCK_BREW_PREFIX/opt/node@24/bin/node"
 if MOCK_OS=Linux mock_setup --config-only > "$TEMP_DIR/platform.log" 2>&1; then
   die 'Unsupported OS should fail.'
 fi
@@ -160,11 +177,19 @@ MOCK_XDG="$TEMP_DIR/xdg config"
 mock_setup --config-only --with-mcp > "$TEMP_DIR/config-only.log"
 cmp "$ROOT/dotfiles/starship.toml" "$MOCK_XDG/starship.toml"
 [[ ! -e "$MOCK_HOME/.config/starship.toml" ]]
-env -i HOME="$MOCK_HOME" ZDOTDIR="$MOCK_HOME" \
-  PATH="$TEMP_DIR/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-  MOCK_LOG="$MOCK_LOG" MOCK_STATE="$MOCK_STATE" \
-  /bin/zsh -d -i -c '[[ "$path[1]" == "$HOME/.local/share/npm/bin" ]]' \
-  > "$TEMP_DIR/shell.log" 2>&1
-[[ ! -s "$TEMP_DIR/shell.log" ]]
+printf 'printf "loaded\\n" >> "$HOME/profile-loads"\n' > "$MOCK_HOME/.zprofile.local"
+for shell_mode in -i -il; do
+  : > "$MOCK_HOME/profile-loads"
+  env -i HOME="$MOCK_HOME" ZDOTDIR="$MOCK_HOME" \
+    PATH="$TEMP_DIR/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+    MOCK_LOG="$MOCK_LOG" MOCK_STATE="$MOCK_STATE" MOCK_BREW_PREFIX="$MOCK_BREW_PREFIX" \
+    /bin/zsh -d "$shell_mode" -c '
+      [[ "$path[1]" == "$HOME/.local/share/npm/bin" ]] &&
+      [[ "$(command -v node)" == "$MOCK_BREW_PREFIX/opt/node@24/bin/node" ]] &&
+      [[ "$(command -v npm)" == "$MOCK_BREW_PREFIX/opt/node@24/bin/npm" ]]
+    ' > "$TEMP_DIR/shell.log" 2>&1
+  [[ ! -s "$TEMP_DIR/shell.log" ]]
+  [[ "$(wc -l < "$MOCK_HOME/profile-loads" | tr -d ' ')" -eq 1 ]]
+done
 
 printf 'Mocked installer, repeatability, opt-in, shell startup, and failure-path tests passed.\n'

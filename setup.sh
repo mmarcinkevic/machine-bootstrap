@@ -114,6 +114,10 @@ install_packages() {
   if "$WITH_OPTIONAL"; then
     run "$brew_bin" bundle install --file="$SCRIPT_DIR/Brewfile.optional" --no-upgrade
   fi
+  if ! "$DRY_RUN"; then
+    [[ -x "$HOMEBREW_PREFIX/opt/node@24/bin/node" ]] || die 'Homebrew Node 24 is missing; install node@24 and rerun.'
+    export PATH="$HOMEBREW_PREFIX/opt/node@24/bin:$PATH"
+  fi
   while IFS= read -r package || [[ -n "$package" ]]; do
     [[ -n "$package" && "$package" != \#* ]] || continue
     if ! "$DRY_RUN" && npm list --global --prefix "$HOME/.local/share/npm" "$package" --depth=0 >/dev/null 2>&1; then
