@@ -11,6 +11,9 @@ else
 fi
 
 typeset -U path PATH
+if [[ -n "${HOMEBREW_PREFIX:-}" && -x "$HOMEBREW_PREFIX/opt/node@24/bin/node" ]]; then
+	path=("$HOMEBREW_PREFIX/opt/node@24/bin" $path)
+fi
 path=(
 	"$HOME/.local/share/npm/bin"
 	"$HOME/.local/bin"
